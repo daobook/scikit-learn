@@ -49,16 +49,15 @@ LOSS_INSTANCES += [
 
 
 def loss_instance_name(param):
-    if isinstance(param, BaseLoss):
-        loss = param
-        name = loss.__class__.__name__
-        if hasattr(loss, "quantile"):
-            name += f"(quantile={loss.closs.quantile})"
-        elif hasattr(loss, "power"):
-            name += f"(power={loss.closs.power})"
-        return name
-    else:
+    if not isinstance(param, BaseLoss):
         return str(param)
+    loss = param
+    name = loss.__class__.__name__
+    if hasattr(loss, "quantile"):
+        name += f"(quantile={loss.closs.quantile})"
+    elif hasattr(loss, "power"):
+        name += f"(power={loss.closs.power})"
+    return name
 
 
 def random_y_true_raw_prediction(
@@ -717,10 +716,7 @@ def test_gradients_hessians_numerically(loss, sample_weight, global_random_seed)
             )
 
         h_numeric = numerical_derivative(grad_func, raw_prediction, eps=1e-6)
-        if loss.approx_hessian:
-            # TODO: What could we test if loss.approx_hessian?
-            pass
-        else:
+        if not loss.approx_hessian:
             assert_allclose(h, h_numeric, rtol=5e-6, atol=1e-10)
     else:
         # For multiclass loss, we should only change the predictions of the
@@ -752,10 +748,7 @@ def test_gradients_hessians_numerically(loss, sample_weight, global_random_seed)
                 )[:, k]
 
             h_numeric = numerical_derivative(grad_func, raw_prediction[:, k], eps=1e-6)
-            if loss.approx_hessian:
-                # TODO: What could we test if loss.approx_hessian?
-                pass
-            else:
+            if not loss.approx_hessian:
                 assert_allclose(h[:, k], h_numeric, rtol=5e-6, atol=1e-10)
 
 
@@ -844,12 +837,14 @@ def test_loss_intercept_only(loss, sample_weight):
 
     # find minimum by optimization
     def fun(x):
-        if not loss.is_multiclass:
-            raw_prediction = np.full(shape=(n_samples), fill_value=x)
-        else:
-            raw_prediction = np.ascontiguousarray(
+        raw_prediction = (
+            np.ascontiguousarray(
                 np.broadcast_to(x, shape=(n_samples, loss.n_classes))
             )
+            if loss.is_multiclass
+            else np.full(shape=(n_samples), fill_value=x)
+        )
+
         return loss(
             y_true=y_true,
             raw_prediction=raw_prediction,

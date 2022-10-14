@@ -17,6 +17,7 @@ based on validation scores.
 See also :ref:`minimal_cost_complexity_pruning` for details on pruning.
 """
 
+
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_breast_cancer
@@ -59,10 +60,9 @@ for ccp_alpha in ccp_alphas:
     clf.fit(X_train, y_train)
     clfs.append(clf)
 print(
-    "Number of nodes in the last tree is: {} with ccp_alpha: {}".format(
-        clfs[-1].tree_.node_count, ccp_alphas[-1]
-    )
+    f"Number of nodes in the last tree is: {clfs[-1].tree_.node_count} with ccp_alpha: {ccp_alphas[-1]}"
 )
+
 
 # %%
 # For the remainder of this example, we remove the last element in

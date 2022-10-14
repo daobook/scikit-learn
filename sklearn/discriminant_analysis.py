@@ -84,9 +84,9 @@ def _cov(X, shrinkage=None, covariance_estimator=None):
         covariance_estimator.fit(X)
         if not hasattr(covariance_estimator, "covariance_"):
             raise ValueError(
-                "%s does not have a covariance_ attribute"
-                % covariance_estimator.__class__.__name__
+                f"{covariance_estimator.__class__.__name__} does not have a covariance_ attribute"
             )
+
         s = covariance_estimator.covariance_
     return s
 
@@ -485,11 +485,7 @@ class LinearDiscriminantAnalysis(
         """
         xp, is_array_api = get_namespace(X)
 
-        if is_array_api:
-            svd = xp.linalg.svd
-        else:
-            svd = scipy.linalg.svd
-
+        svd = xp.linalg.svd if is_array_api else scipy.linalg.svd
         n_samples, n_features = X.shape
         n_classes = self.classes_.shape[0]
 
@@ -603,11 +599,11 @@ class LinearDiscriminantAnalysis(
 
         if self.n_components is None:
             self._max_components = max_components
+        elif self.n_components > max_components:
+            raise ValueError(
+                "n_components cannot be larger than min(n_features, n_classes - 1)."
+            )
         else:
-            if self.n_components > max_components:
-                raise ValueError(
-                    "n_components cannot be larger than min(n_features, n_classes - 1)."
-                )
             self._max_components = self.n_components
 
         if self.solver == "svd":
@@ -690,11 +686,10 @@ class LinearDiscriminantAnalysis(
         check_is_fitted(self)
         xp, is_array_api = get_namespace(X)
         decision = self.decision_function(X)
-        if self.classes_.size == 2:
-            proba = _expit(decision)
-            return xp.stack([1 - proba, proba], axis=1)
-        else:
+        if self.classes_.size != 2:
             return softmax(decision)
+        proba = _expit(decision)
+        return xp.stack([1 - proba, proba], axis=1)
 
     def predict_log_proba(self, X):
         """Estimate log probability.
@@ -902,10 +897,8 @@ class QuadraticDiscriminantAnalysis(ClassifierMixin, BaseEstimator):
         else:
             self.priors_ = np.array(self.priors)
 
-        cov = None
         store_covariance = self.store_covariance
-        if store_covariance:
-            cov = []
+        cov = [] if store_covariance else None
         means = []
         scalings = []
         rotations = []
@@ -915,9 +908,9 @@ class QuadraticDiscriminantAnalysis(ClassifierMixin, BaseEstimator):
             means.append(meang)
             if len(Xg) == 1:
                 raise ValueError(
-                    "y has only 1 sample in class %s, covariance is ill defined."
-                    % str(self.classes_[ind])
+                    f"y has only 1 sample in class {str(self.classes_[ind])}, covariance is ill defined."
                 )
+
             Xgc = Xg - meang
             # Xgc = U * S * V.T
             _, S, Vt = np.linalg.svd(Xgc, full_matrices=False)
@@ -976,9 +969,7 @@ class QuadraticDiscriminantAnalysis(ClassifierMixin, BaseEstimator):
         """
         dec_func = self._decision_function(X)
         # handle special case of two classes
-        if len(self.classes_) == 2:
-            return dec_func[:, 1] - dec_func[:, 0]
-        return dec_func
+        return dec_func[:, 1] - dec_func[:, 0] if len(self.classes_) == 2 else dec_func
 
     def predict(self, X):
         """Perform classification on an array of test vectors X.
@@ -997,8 +988,7 @@ class QuadraticDiscriminantAnalysis(ClassifierMixin, BaseEstimator):
             Estimated probabilities.
         """
         d = self._decision_function(X)
-        y_pred = self.classes_.take(d.argmax(1))
-        return y_pred
+        return self.classes_.take(d.argmax(1))
 
     def predict_proba(self, X):
         """Return posterior probabilities of classification.

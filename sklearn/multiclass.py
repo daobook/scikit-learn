@@ -72,13 +72,8 @@ def _fit_binary(estimator, X, y, classes=None):
     unique_y = np.unique(y)
     if len(unique_y) == 1:
         if classes is not None:
-            if y[0] == -1:
-                c = 0
-            else:
-                c = y[0]
-            warnings.warn(
-                "Label %s is present in all training examples." % str(classes[c])
-            )
+            c = 0 if y[0] == -1 else y[0]
+            warnings.warn(f"Label {str(classes[c])} is present in all training examples.")
         estimator = _ConstantPredictor().fit(X, unique_y)
     else:
         estimator = clone(estimator)
@@ -333,12 +328,13 @@ class OneVsRestClassifier(
                 X,
                 column,
                 classes=[
-                    "not %s" % self.label_binarizer_.classes_[i],
+                    f"not {self.label_binarizer_.classes_[i]}",
                     self.label_binarizer_.classes_[i],
                 ],
             )
             for i, column in enumerate(columns)
         )
+
 
         if hasattr(self.estimators_[0], "n_features_in_"):
             self.n_features_in_ = self.estimators_[0].n_features_in_
@@ -837,9 +833,7 @@ class OneVsOneClassifier(MetaEstimatorMixin, ClassifierMixin, BaseEstimator):
             [_predict_binary(est, Xi) for est, Xi in zip(self.estimators_, Xs)]
         ).T
         Y = _ovr_decision_function(predictions, confidences, len(self.classes_))
-        if self.n_classes_ == 2:
-            return Y[:, 1]
-        return Y
+        return Y[:, 1] if self.n_classes_ == 2 else Y
 
     @property
     def n_classes_(self):

@@ -78,6 +78,7 @@ is not scaled.
 
 """
 
+
 # Author: Andreas Mueller <amueller@ais.uni-bonn.de>
 #         Jaques Grobler <jaques.grobler@inria.fr>
 # License: BSD 3 clause
@@ -160,9 +161,7 @@ for clf, cs, X, y in clf_sets:
                 color=colors[k],
                 lw=lw,
             )
-            ax.set_title(
-                "scaling=%s, penalty=%s, loss=%s" % (name, clf.penalty, clf.loss)
-            )
+            ax.set_title(f"scaling={name}, penalty={clf.penalty}, loss={clf.loss}")
 
     plt.legend(loc="best")
 plt.show()

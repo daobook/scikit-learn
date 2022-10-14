@@ -77,7 +77,7 @@ def compile_test_program(code, extra_preargs=[], extra_postargs=[]):
             )
 
             # Link test program
-            objects = glob.glob(os.path.join("objects", "*" + ccompiler.obj_extension))
+            objects = glob.glob(os.path.join("objects", f"*{ccompiler.obj_extension}"))
             ccompiler.link_executable(
                 objects,
                 "test_program",

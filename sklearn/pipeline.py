@@ -255,9 +255,11 @@ class Pipeline(_BaseComposition):
             stop -= 1
 
         for idx, (name, trans) in enumerate(islice(self.steps, 0, stop)):
-            if not filter_passthrough:
-                yield idx, name, trans
-            elif trans is not None and trans != "passthrough":
+            if (
+                not filter_passthrough
+                or trans is not None
+                and trans != "passthrough"
+            ):
                 yield idx, name, trans
 
     def __len__(self):
@@ -318,12 +320,9 @@ class Pipeline(_BaseComposition):
         for pname, pval in fit_params.items():
             if "__" not in pname:
                 raise ValueError(
-                    "Pipeline.fit does not accept the {} parameter. "
-                    "You can pass parameters to specific steps of your "
-                    "pipeline using the stepname__parameter format, e.g. "
-                    "`Pipeline.fit(X, y, logisticregression__sample_weight"
-                    "=sample_weight)`.".format(pname)
+                    f"Pipeline.fit does not accept the {pname} parameter. You can pass parameters to specific steps of your pipeline using the stepname__parameter format, e.g. `Pipeline.fit(X, y, logisticregression__sample_weight=sample_weight)`."
                 )
+
             step, param = pname.split("__", 1)
             fit_params_steps[step][param] = pval
         return fit_params_steps
@@ -746,10 +745,9 @@ class Pipeline(_BaseComposition):
         for _, name, transform in self._iter():
             if not hasattr(transform, "get_feature_names_out"):
                 raise AttributeError(
-                    "Estimator {} does not provide get_feature_names_out. "
-                    "Did you mean to call pipeline[:-1].get_feature_names_out"
-                    "()?".format(name)
+                    f"Estimator {name} does not provide get_feature_names_out. Did you mean to call pipeline[:-1].get_feature_names_out()?"
                 )
+
             feature_names_out = transform.get_feature_names_out(feature_names_out)
         return feature_names_out
 
@@ -872,9 +870,7 @@ def make_pipeline(*steps, memory=None, verbose=False):
 def _transform_one(transformer, X, y, weight, **fit_params):
     res = transformer.transform(X)
     # if we have a weight for this transformer, multiply output
-    if weight is None:
-        return res
-    return res * weight
+    return res if weight is None else res * weight
 
 
 def _fit_transform_one(
@@ -891,9 +887,7 @@ def _fit_transform_one(
         else:
             res = transformer.fit(X, y, **fit_params).transform(X)
 
-    if weight is None:
-        return res, transformer
-    return res * weight, transformer
+    return (res, transformer) if weight is None else (res * weight, transformer)
 
 
 def _fit_one(transformer, X, y, weight, message_clsname="", message=None, **fit_params):
@@ -1073,7 +1067,7 @@ class FeatureUnion(TransformerMixin, _BaseComposition):
         if not self.transformer_weights:
             return
 
-        transformer_names = set(name for name, _ in self.transformer_list)
+        transformer_names = {name for name, _ in self.transformer_list}
         for name in self.transformer_weights:
             if name not in transformer_names:
                 raise ValueError(
@@ -1113,9 +1107,9 @@ class FeatureUnion(TransformerMixin, _BaseComposition):
         for name, trans, _ in self._iter():
             if not hasattr(trans, "get_feature_names_out"):
                 raise AttributeError(
-                    "Transformer %s (type %s) does not provide get_feature_names_out."
-                    % (str(name), type(trans).__name__)
+                    f"Transformer {str(name)} (type {type(trans).__name__}) does not provide get_feature_names_out."
                 )
+
             feature_names.extend(
                 [f"{name}__{f}" for f in trans.get_feature_names_out(input_features)]
             )
@@ -1180,9 +1174,11 @@ class FeatureUnion(TransformerMixin, _BaseComposition):
         return self._hstack(Xs)
 
     def _log_message(self, name, idx, total):
-        if not self.verbose:
-            return None
-        return "(step %d of %d) Processing %s" % (idx, total, name)
+        return (
+            "(step %d of %d) Processing %s" % (idx, total, name)
+            if self.verbose
+            else None
+        )
 
     def _parallel_func(self, X, y, fit_params, func):
         """Runs func in parallel on X and y"""
@@ -1223,11 +1219,7 @@ class FeatureUnion(TransformerMixin, _BaseComposition):
             delayed(_transform_one)(trans, X, None, weight)
             for name, trans, weight in self._iter()
         )
-        if not Xs:
-            # All transformers are None
-            return np.zeros((X.shape[0], 0))
-
-        return self._hstack(Xs)
+        return self._hstack(Xs) if Xs else np.zeros((X.shape[0], 0))
 
     def _hstack(self, Xs):
         config = _get_output_config("transform", self)

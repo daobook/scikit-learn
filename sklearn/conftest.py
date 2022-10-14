@@ -24,9 +24,9 @@ from sklearn.tests import random_seed
 
 if parse_version(pytest.__version__) < parse_version(PYTEST_MIN_VERSION):
     raise ImportError(
-        "Your version of pytest is too old, you should have "
-        "at least pytest >= {} installed.".format(PYTEST_MIN_VERSION)
+        f"Your version of pytest is too old, you should have at least pytest >= {PYTEST_MIN_VERSION} installed."
     )
+
 
 dataset_fetchers = {
     "fetch_20newsgroups_fxt": fetch_20newsgroups,
@@ -165,13 +165,11 @@ def pytest_collection_modifyitems(config, items):
         skip_marker = pytest.mark.skip(reason=reason)
 
         for item in items:
-            if isinstance(item, DoctestItem):
-                # work-around an internal error with pytest if adding a skip
-                # mark to a doctest in a contextmanager, see
-                # https://github.com/pytest-dev/pytest/issues/8796 for more
-                # details.
-                if item.name != "sklearn._config.config_context":
-                    item.add_marker(skip_marker)
+            if (
+                isinstance(item, DoctestItem)
+                and item.name != "sklearn._config.config_context"
+            ):
+                item.add_marker(skip_marker)
     try:
         import PIL  # noqa
 

@@ -10,10 +10,7 @@ LABEL_ORDER = ["MajorFeature", "Feature", "Enhancement", "Efficiency", "Fix", "A
 
 
 def entry_sort_key(s):
-    if s.startswith("- |"):
-        return LABEL_ORDER.index(s.split("|")[1])
-    else:
-        return -1
+    return LABEL_ORDER.index(s.split("|")[1]) if s.startswith("- |") else -1
 
 
 # discard headings and other non-entry lines
@@ -29,7 +26,7 @@ for entry in re.split("\n(?=- )", text.strip()):
     if len(modules) > 1:
         key = "Multiple modules"
     elif modules:
-        key = ":mod:`sklearn.%s`" % next(iter(modules))
+        key = f":mod:`sklearn.{next(iter(modules))}`"
     else:
         key = "Miscellaneous"
     bucketed[key].append(entry)
