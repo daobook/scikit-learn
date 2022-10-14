@@ -59,14 +59,13 @@ jobs:
           # needed by build_doc.sh to compute the list of changed doc files:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: 更新 PO
+        
+      - name: Build documentation
         run: |
+          bash build_tools/github/build_doc.sh
           cd ./doc
           sphinx-build -b gettext ./ ../zh_CN/_build/gettext
           sphinx-intl update -p ../zh_CN/_build/gettext -l zh_CN
-      - name: Build documentation
-        run: bash build_tools/github/build_doc.sh
         env:
           OMP_NUM_THREADS: 2
           MKL_NUM_THREADS: 2
