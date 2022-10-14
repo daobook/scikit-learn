@@ -49,7 +49,7 @@ jobs:
   doc:
     # This prevents this workflow from running on a fork.
     # To test this workflow on a fork, uncomment the following line.
-    if: github.repository == 'scikit-learn/scikit-learn'
+    if: github.repository == 'daobook/scikit-learn'
 
     runs-on: ubuntu-latest
     steps:
@@ -60,6 +60,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: 更新 PO
+        run: |
+          cd ./doc
+          sphinx-build -b gettext ./ ../zh_CN/_build/gettext
+          sphinx-intl update -p ../zh_CN/_build/gettext -l zh_CN
       - name: Build documentation
         run: bash build_tools/github/build_doc.sh
         env:
