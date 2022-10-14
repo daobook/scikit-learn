@@ -343,10 +343,7 @@ def benchmark(clf, custom_name=False):
         print()
 
     print()
-    if custom_name:
-        clf_descr = str(custom_name)
-    else:
-        clf_descr = clf.__class__.__name__
+    clf_descr = str(custom_name) if custom_name else clf.__class__.__name__
     return clf_descr, score, train_time, test_time
 
 

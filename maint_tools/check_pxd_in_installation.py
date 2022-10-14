@@ -5,6 +5,7 @@ Usage:
 python check_pxd_in_installation.py path/to/install_dir/of/scikit-learn
 """
 
+
 import os
 import sys
 import pathlib
@@ -31,7 +32,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
             to_import = str(pxd_file.relative_to(sklearn_dir))
             to_import = to_import.replace(os.path.sep, ".")
             to_import = to_import.replace(".pxd", "")
-            f.write("cimport sklearn." + to_import + "\n")
+            f.write(f"cimport sklearn.{to_import}" + "\n")
 
     # A basic setup file to build the test file.
     # We set the language to c++ and we use numpy.get_include() because

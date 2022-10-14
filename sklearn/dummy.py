@@ -197,13 +197,12 @@ class DummyClassifier(MultiOutputMixin, ClassifierMixin, BaseEstimator):
                     "Constant target value has to be specified "
                     "when the constant strategy is used."
                 )
-            else:
-                constant = np.reshape(np.atleast_1d(self.constant), (-1, 1))
-                if constant.shape[0] != self.n_outputs_:
-                    raise ValueError(
-                        "Constant target value should have shape (%d, 1)."
-                        % self.n_outputs_
-                    )
+            constant = np.reshape(np.atleast_1d(self.constant), (-1, 1))
+            if constant.shape[0] != self.n_outputs_:
+                raise ValueError(
+                    "Constant target value should have shape (%d, 1)."
+                    % self.n_outputs_
+                )
 
         (self.classes_, self.n_classes_, self.class_prior_) = class_distribution(
             y, sample_weight
@@ -211,16 +210,11 @@ class DummyClassifier(MultiOutputMixin, ClassifierMixin, BaseEstimator):
 
         if self._strategy == "constant":
             for k in range(self.n_outputs_):
-                if not any(constant[k][0] == c for c in self.classes_[k]):
+                if all(constant[k][0] != c for c in self.classes_[k]):
                     # Checking in case of constant strategy if the constant
                     # provided by the user is in y.
-                    err_msg = (
-                        "The constant target value must be present in "
-                        "the training data. You provided constant={}. "
-                        "Possible values are: {}.".format(
-                            self.constant, list(self.classes_[k])
-                        )
-                    )
+                    err_msg = f"The constant target value must be present in the training data. You provided constant={self.constant}. Possible values are: {list(self.classes_[k])}."
+
                     raise ValueError(err_msg)
 
         if self.n_outputs_ == 1:
@@ -397,10 +391,7 @@ class DummyClassifier(MultiOutputMixin, ClassifierMixin, BaseEstimator):
             output.
         """
         proba = self.predict_proba(X)
-        if self.n_outputs_ == 1:
-            return np.log(proba)
-        else:
-            return [np.log(p) for p in proba]
+        return np.log(proba) if self.n_outputs_ == 1 else [np.log(p) for p in proba]
 
     def _more_tags(self):
         return {

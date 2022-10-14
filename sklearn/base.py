@@ -68,20 +68,19 @@ def clone(estimator, *, safe=True):
     elif not hasattr(estimator, "get_params") or isinstance(estimator, type):
         if not safe:
             return copy.deepcopy(estimator)
+        if isinstance(estimator, type):
+            raise TypeError(
+                "Cannot clone object. "
+                + "You should provide an instance of "
+                + "scikit-learn estimator instead of a class."
+            )
         else:
-            if isinstance(estimator, type):
-                raise TypeError(
-                    "Cannot clone object. "
-                    + "You should provide an instance of "
-                    + "scikit-learn estimator instead of a class."
-                )
-            else:
-                raise TypeError(
-                    "Cannot clone object '%s' (type %s): "
-                    "it does not seem to be a scikit-learn "
-                    "estimator as it does not implement a "
-                    "'get_params' method." % (repr(estimator), type(estimator))
-                )
+            raise TypeError(
+                "Cannot clone object '%s' (type %s): "
+                "it does not seem to be a scikit-learn "
+                "estimator as it does not implement a "
+                "'get_params' method." % (repr(estimator), type(estimator))
+            )
 
     klass = estimator.__class__
     new_object_params = estimator.get_params(deep=False)
@@ -165,12 +164,12 @@ class BaseEstimator:
         params : dict
             Parameter names mapped to their values.
         """
-        out = dict()
+        out = {}
         for key in self._get_param_names():
             value = getattr(self, key)
             if deep and hasattr(value, "get_params") and not isinstance(value, type):
                 deep_items = value.get_params().items()
-                out.update((key + "__" + k, val) for k, val in deep_items)
+                out |= ((f"{key}__{k}", val) for k, val in deep_items)
             out[key] = value
         return out
 
@@ -266,7 +265,7 @@ class BaseEstimator:
             ellipsis = "..."
             if left_lim + len(ellipsis) < len(repr_) - right_lim:
                 # Only add ellipsis if it results in a shorter repr
-                repr_ = repr_[:left_lim] + "..." + repr_[-right_lim:]
+                repr_ = f"{repr_[:left_lim]}...{repr_[-right_lim:]}"
 
         return repr_
 
@@ -312,7 +311,7 @@ class BaseEstimator:
                 # but might do redundant work in estimators
                 # (i.e. calling more tags on BaseEstimator multiple times)
                 more_tags = base_class._more_tags(self)
-                collected_tags.update(more_tags)
+                collected_tags |= more_tags
         return collected_tags
 
     def _check_n_features(self, X, reset):
@@ -528,14 +527,14 @@ class BaseEstimator:
         no_val_y = y is None or isinstance(y, str) and y == "no_validation"
 
         default_check_params = {"estimator": self}
-        check_params = {**default_check_params, **check_params}
+        check_params = default_check_params | check_params
 
         if no_val_X and no_val_y:
             raise ValueError("Validation should be done on X, y or both.")
         elif not no_val_X and no_val_y:
             X = check_array(X, input_name="X", **check_params)
             out = X
-        elif no_val_X and not no_val_y:
+        elif no_val_X:
             y = _check_y(y, **check_params)
             out = y
         else:

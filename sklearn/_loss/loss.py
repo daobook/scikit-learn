@@ -498,10 +498,7 @@ class BaseLoss:
                 f"Got dtype={dtype} instead."
             )
 
-        if self.is_multiclass:
-            shape = (n_samples, self.n_classes)
-        else:
-            shape = (n_samples,)
+        shape = (n_samples, self.n_classes) if self.is_multiclass else (n_samples, )
         gradient = np.empty(shape=shape, dtype=dtype, order=order)
 
         if self.constant_hessian:

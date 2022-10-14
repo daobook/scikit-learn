@@ -230,13 +230,9 @@ class TweedieDistribution(ExponentialDispersionModel):
         elif 1 <= power < 2:
             # Poisson or Compound Poisson distribution
             self._lower_bound = DistributionBoundary(0, inclusive=True)
-        elif power >= 2:
+        else:
             # Gamma, Positive Stable, Inverse Gaussian distributions
             self._lower_bound = DistributionBoundary(0, inclusive=False)
-        else:  # pragma: no cover
-            # this branch should be unreachable.
-            raise ValueError
-
         self._power = power
 
     def unit_variance(self, y_pred):
@@ -277,15 +273,11 @@ class TweedieDistribution(ExponentialDispersionModel):
         p = self.power
 
         if check_input:
-            message = (
-                "Mean Tweedie deviance error with power={} can only be used on ".format(
-                    p
-                )
-            )
+            message = f"Mean Tweedie deviance error with power={p} can only be used on "
             if p < 0:
                 # 'Extreme stable', y any real number, y_pred > 0
                 if (y_pred <= 0).any():
-                    raise ValueError(message + "strictly positive y_pred.")
+                    raise ValueError(f"{message}strictly positive y_pred.")
             elif p == 0:
                 # Normal, y and y_pred can be any real number
                 pass
@@ -296,13 +288,11 @@ class TweedieDistribution(ExponentialDispersionModel):
             elif 1 <= p < 2:
                 # Poisson and compound Poisson distribution, y >= 0, y_pred > 0
                 if (y < 0).any() or (y_pred <= 0).any():
-                    raise ValueError(
-                        message + "non-negative y and strictly positive y_pred."
-                    )
+                    raise ValueError(f"{message}non-negative y and strictly positive y_pred.")
             elif p >= 2:
                 # Gamma and Extreme stable distribution, y and y_pred > 0
                 if (y <= 0).any() or (y_pred <= 0).any():
-                    raise ValueError(message + "strictly positive y and y_pred.")
+                    raise ValueError(f"{message}strictly positive y and y_pred.")
             else:  # pragma: nocover
                 # Unreachable statement
                 raise ValueError

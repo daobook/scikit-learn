@@ -91,13 +91,13 @@ def create_or_update_issue(body=""):
         header = f"**CI failed on {link}** ({date_str})"
         issue = issue_repo.create_issue(title=title, body=f"{header}\n{body}")
         print(f"Created issue in {args.issue_repo}#{issue.number}")
-        sys.exit()
     else:
         # Update existing issue
         header = f"**CI is still failing on {link}** ({date_str})"
         issue.edit(body=f"{header}\n{body}")
         print(f"Commented on issue: {args.issue_repo}#{issue.number}")
-        sys.exit()
+
+    sys.exit()
 
 
 def close_issue_if_opened():

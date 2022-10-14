@@ -154,11 +154,10 @@ class IdentityLink(BaseLink):
     """The identity link function g(x)=x."""
 
     def link(self, y_pred, out=None):
-        if out is not None:
-            np.copyto(out, y_pred)
-            return out
-        else:
+        if out is None:
             return y_pred
+        np.copyto(out, y_pred)
+        return out
 
     inverse = link
 
@@ -247,10 +246,9 @@ class MultinomialLogit(BaseLink):
     def inverse(self, raw_prediction, out=None):
         if out is None:
             return softmax(raw_prediction, copy=True)
-        else:
-            np.copyto(out, raw_prediction)
-            softmax(out, copy=False)
-            return out
+        np.copyto(out, raw_prediction)
+        softmax(out, copy=False)
+        return out
 
 
 _LINKS = {

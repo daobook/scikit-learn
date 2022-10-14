@@ -582,10 +582,9 @@ def _fit_classifier_calibrator_pair(
     predictions = _compute_predictions(pred_method, method_name, X_test, n_classes)
 
     sw_test = None if sample_weight is None else _safe_indexing(sample_weight, test)
-    calibrated_classifier = _fit_calibrator(
+    return _fit_calibrator(
         estimator, predictions, y_test, classes, method, sample_weight=sw_test
     )
-    return calibrated_classifier
 
 
 def _get_prediction_method(clf):
@@ -697,8 +696,7 @@ def _fit_calibrator(clf, predictions, y, classes, method, sample_weight=None):
         calibrator.fit(this_pred, Y[:, class_idx], sample_weight)
         calibrators.append(calibrator)
 
-    pipeline = _CalibratedClassifier(clf, calibrators, method=method, classes=classes)
-    return pipeline
+    return _CalibratedClassifier(clf, calibrators, method=method, classes=classes)
 
 
 class _CalibratedClassifier:
@@ -777,7 +775,7 @@ class _CalibratedClassifier:
             )
 
         # Deal with cases where the predicted probability minimally exceeds 1.0
-        proba[(1.0 < proba) & (proba <= 1.0 + 1e-5)] = 1.0
+        proba[(proba > 1.0) & (proba <= 1.0 + 1e-5)] = 1.0
 
         return proba
 

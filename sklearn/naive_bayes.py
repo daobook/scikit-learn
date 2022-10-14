@@ -474,9 +474,9 @@ class GaussianNB(_BaseNB):
 
         if not np.all(unique_y_in_classes):
             raise ValueError(
-                "The target label(s) %s in y do not exist in the initial classes %s"
-                % (unique_y[~unique_y_in_classes], classes)
+                f"The target label(s) {unique_y[~unique_y_in_classes]} in y do not exist in the initial classes {classes}"
             )
+
 
         for y_i in unique_y:
             i = classes.searchsorted(y_i)
@@ -605,12 +605,10 @@ class _BaseDiscreteNB(_BaseNB):
             self.class_log_prior_ = np.full(n_classes, -np.log(n_classes))
 
     def _check_alpha(self):
-        alpha = (
-            np.asarray(self.alpha) if not isinstance(self.alpha, Real) else self.alpha
-        )
+        alpha = self.alpha if isinstance(self.alpha, Real) else np.asarray(self.alpha)
         alpha_min = np.min(alpha)
         if isinstance(alpha, np.ndarray):
-            if not alpha.shape[0] == self.n_features_in_:
+            if alpha.shape[0] != self.n_features_in_:
                 raise ValueError(
                     "When alpha is an array, it should contains `n_features`. "
                     f"Got {alpha.shape[0]} elements instead of {self.n_features_in_}."
@@ -1463,22 +1461,21 @@ class CategoricalNB(_BaseDiscreteNB):
         # rely on max for n_categories categories are encoded between 0...n-1
         n_categories_X = X.max(axis=0) + 1
         min_categories_ = np.array(min_categories)
-        if min_categories is not None:
-            if not np.issubdtype(min_categories_.dtype, np.signedinteger):
-                raise ValueError(
-                    "'min_categories' should have integral type. Got "
-                    f"{min_categories_.dtype} instead."
-                )
-            n_categories_ = np.maximum(n_categories_X, min_categories_, dtype=np.int64)
-            if n_categories_.shape != n_categories_X.shape:
-                raise ValueError(
-                    f"'min_categories' should have shape ({X.shape[1]},"
-                    ") when an array-like is provided. Got"
-                    f" {min_categories_.shape} instead."
-                )
-            return n_categories_
-        else:
+        if min_categories is None:
             return n_categories_X
+        if not np.issubdtype(min_categories_.dtype, np.signedinteger):
+            raise ValueError(
+                "'min_categories' should have integral type. Got "
+                f"{min_categories_.dtype} instead."
+            )
+        n_categories_ = np.maximum(n_categories_X, min_categories_, dtype=np.int64)
+        if n_categories_.shape != n_categories_X.shape:
+            raise ValueError(
+                f"'min_categories' should have shape ({X.shape[1]},"
+                ") when an array-like is provided. Got"
+                f" {min_categories_.shape} instead."
+            )
+        return n_categories_
 
     def _count(self, X, Y):
         def _update_cat_count_dims(cat_count, highest_feature):
@@ -1491,10 +1488,7 @@ class CategoricalNB(_BaseDiscreteNB):
         def _update_cat_count(X_feature, Y, cat_count, n_classes):
             for j in range(n_classes):
                 mask = Y[:, j].astype(bool)
-                if Y.dtype.type == np.int64:
-                    weights = None
-                else:
-                    weights = Y[mask, j]
+                weights = None if Y.dtype.type == np.int64 else Y[mask, j]
                 counts = np.bincount(X_feature[mask], weights=weights)
                 indices = np.nonzero(counts)[0]
                 cat_count[j, indices] += counts[indices]
@@ -1526,5 +1520,4 @@ class CategoricalNB(_BaseDiscreteNB):
         for i in range(self.n_features_in_):
             indices = X[:, i]
             jll += self.feature_log_prob_[i][:, indices].T
-        total_ll = jll + self.class_log_prior_
-        return total_ll
+        return jll + self.class_log_prior_

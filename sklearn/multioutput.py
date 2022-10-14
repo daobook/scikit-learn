@@ -57,16 +57,15 @@ def _partial_fit_estimator(
     if first_time:
         estimator = clone(estimator)
 
-    if sample_weight is not None:
-        if classes is not None:
-            estimator.partial_fit(X, y, classes=classes, sample_weight=sample_weight)
-        else:
-            estimator.partial_fit(X, y, sample_weight=sample_weight)
-    else:
+    if sample_weight is None:
         if classes is not None:
             estimator.partial_fit(X, y, classes=classes)
         else:
             estimator.partial_fit(X, y)
+    elif classes is not None:
+        estimator.partial_fit(X, y, classes=classes, sample_weight=sample_weight)
+    else:
+        estimator.partial_fit(X, y, sample_weight=sample_weight)
     return estimator
 
 
@@ -147,7 +146,7 @@ class _MultiOutputEstimator(MetaEstimatorMixin, BaseEstimator, metaclass=ABCMeta
 
         self.estimators_ = Parallel(n_jobs=self.n_jobs)(
             delayed(_partial_fit_estimator)(
-                self.estimators_[i] if not first_time else self.estimator,
+                self.estimator if first_time else self.estimators_[i],
                 X,
                 y[:, i],
                 classes[i] if classes is not None else None,
@@ -157,10 +156,12 @@ class _MultiOutputEstimator(MetaEstimatorMixin, BaseEstimator, metaclass=ABCMeta
             for i in range(y.shape[1])
         )
 
-        if first_time and hasattr(self.estimators_[0], "n_features_in_"):
-            self.n_features_in_ = self.estimators_[0].n_features_in_
-        if first_time and hasattr(self.estimators_[0], "feature_names_in_"):
-            self.feature_names_in_ = self.estimators_[0].feature_names_in_
+
+        if first_time:
+            if hasattr(self.estimators_[0], "n_features_in_"):
+                self.n_features_in_ = self.estimators_[0].n_features_in_
+            if hasattr(self.estimators_[0], "feature_names_in_"):
+                self.feature_names_in_ = self.estimators_[0].feature_names_in_
 
         return self
 
@@ -488,8 +489,7 @@ class MultiOutputClassifier(ClassifierMixin, _MultiOutputEstimator):
                 ``n_classes``) for that particular output.
         """
         check_is_fitted(self)
-        results = [estimator.predict_proba(X) for estimator in self.estimators_]
-        return results
+        return [estimator.predict_proba(X) for estimator in self.estimators_]
 
     def score(self, X, y):
         """Return the mean accuracy on the given test data and labels.
@@ -561,9 +561,11 @@ class _BaseChain(BaseEstimator, metaclass=ABCMeta):
         self.verbose = verbose
 
     def _log_message(self, *, estimator_idx, n_estimators, processing_msg):
-        if not self.verbose:
-            return None
-        return f"({estimator_idx} of {n_estimators}) {processing_msg}"
+        return (
+            f"({estimator_idx} of {n_estimators}) {processing_msg}"
+            if self.verbose
+            else None
+        )
 
     @abstractmethod
     def fit(self, X, Y, **fit_params):
@@ -662,19 +664,14 @@ class _BaseChain(BaseEstimator, metaclass=ABCMeta):
         for chain_idx, estimator in enumerate(self.estimators_):
             previous_predictions = Y_pred_chain[:, :chain_idx]
             if sp.issparse(X):
-                if chain_idx == 0:
-                    X_aug = X
-                else:
-                    X_aug = sp.hstack((X, previous_predictions))
+                X_aug = X if chain_idx == 0 else sp.hstack((X, previous_predictions))
             else:
                 X_aug = np.hstack((X, previous_predictions))
             Y_pred_chain[:, chain_idx] = estimator.predict(X_aug)
 
         inv_order = np.empty_like(self.order_)
         inv_order[self.order_] = np.arange(len(self.order_))
-        Y_pred = Y_pred_chain[:, inv_order]
-
-        return Y_pred
+        return Y_pred_chain[:, inv_order]
 
 
 class ClassifierChain(MetaEstimatorMixin, ClassifierMixin, _BaseChain):
@@ -812,9 +809,7 @@ class ClassifierChain(MetaEstimatorMixin, ClassifierMixin, _BaseChain):
         self._validate_params()
 
         super().fit(X, Y)
-        self.classes_ = [
-            estimator.classes_ for chain_idx, estimator in enumerate(self.estimators_)
-        ]
+        self.classes_ = [estimator.classes_ for estimator in self.estimators_]
         return self
 
     @_available_if_base_estimator_has("predict_proba")
@@ -844,9 +839,7 @@ class ClassifierChain(MetaEstimatorMixin, ClassifierMixin, _BaseChain):
             Y_pred_chain[:, chain_idx] = estimator.predict(X_aug)
         inv_order = np.empty_like(self.order_)
         inv_order[self.order_] = np.arange(len(self.order_))
-        Y_prob = Y_prob_chain[:, inv_order]
-
-        return Y_prob
+        return Y_prob_chain[:, inv_order]
 
     @_available_if_base_estimator_has("decision_function")
     def decision_function(self, X):
@@ -877,9 +870,7 @@ class ClassifierChain(MetaEstimatorMixin, ClassifierMixin, _BaseChain):
 
         inv_order = np.empty_like(self.order_)
         inv_order[self.order_] = np.arange(len(self.order_))
-        Y_decision = Y_decision_chain[:, inv_order]
-
-        return Y_decision
+        return Y_decision_chain[:, inv_order]
 
     def _more_tags(self):
         return {"_skip_test": True, "multioutput_only": True}
